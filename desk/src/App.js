@@ -15,7 +15,7 @@ const App = () => {
   }
 
   useEffect(() => {
-    const peer = new Peer('wir001', {
+    const peer = new Peer('home', {
       host: '124.222.249.224',
       port: '9000',
       path: '/myapp'

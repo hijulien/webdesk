@@ -1,7 +1,8 @@
 const {
     app,
+    ipcMain,
+    clipboard,
     BrowserWindow,
-    ipcMain
 } = require('electron')
 const {
     mouse,
@@ -41,6 +42,7 @@ function createWindow() {
                 break;
 
             case "rightClick":
+                console.log("rightClick");
                 (async () => {
                     await mouse.setPosition(new Point(Math.floor(arg.X * w), Math.floor(arg.Y * h)));
                     await mouse.click(Button.RIGHT);
@@ -49,14 +51,12 @@ function createWindow() {
 
             case "upWheel":
                 (async () => {
-                    console.log("向上滚动");
                     await mouse.scrollUp(120);
                 })();
                 break;
 
             case "downWheel":
                 (async () => {
-                    console.log("向下滚动");
                     await mouse.scrollDown(120);
                 })();
                 break;
@@ -69,12 +69,11 @@ function createWindow() {
 
             case "drag":
                 (async () => {
-                    console.log("拖动");
                     await mouse.drag(straightTo(centerOf(new Region(0, 0, 100, 100))));
                 })();
                 break;
             default:
-                console.log("error");
+                break;
         }
     });
 
@@ -171,8 +170,14 @@ function createWindow() {
                         await keyboard.releaseKey(7, Key[arg.value]);
                     } else
                     if (!arg.shiftKey && arg.ctrlKey) {
-                        await keyboard.pressKey(4, Key[arg.value]);
-                        await keyboard.releaseKey(4, Key[arg.value]);
+                        if (arg.value !== "V") {
+                            await keyboard.pressKey(4, Key[arg.value]);
+                            await keyboard.releaseKey(4, Key[arg.value]);
+                        } else {
+                            clipboard.writeText(arg.clipboardText)
+                            await keyboard.pressKey(4, Key[arg.value]);
+                            await keyboard.releaseKey(4, Key[arg.value]);
+                        }
                     } else {
                         console.log("ctrl shift key");
                     }
@@ -181,7 +186,9 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadURL(path.join(__dirname, './build/index.html'));
+    // mainWindow.loadURL(path.join(__dirname, './build/index.html'));
+    mainWindow.loadURL('http://localhost:3000');
+
 }
 
 

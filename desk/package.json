@@ -1,5 +1,5 @@
 {
-  "name": "remote-control",
+  "name": "webdesk",
   "version": "0.1.0",
   "author": {
     "name": "wir_remote_control",
@@ -35,8 +35,8 @@
     "dist": "electron-builder -p always"
   },
   "build": {
-    "appId": "RemoteControl",
-    "productName": "RemoteControl",
+    "appId": "WebDesk",
+    "productName": "WebDesk",
     "files": [
       "build/**/*",
       "node_modules/**/*",
