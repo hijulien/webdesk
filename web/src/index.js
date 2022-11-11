@@ -8,16 +8,16 @@ import { ConfigProvider } from 'antd';
 ConfigProvider.config({
   prefixCls: 'custom',
   theme: {
-    primaryColor: '#000',
+    primaryColor: '#25b864',
   },
 });
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   // <React.StrictMode>
-  <ConfigProvider prefixCls="custom">
+  // <ConfigProvider prefixCls="custom">
     <App />
-  </ConfigProvider>
+  // </ConfigProvider>
   // </React.StrictMode>
 );
 

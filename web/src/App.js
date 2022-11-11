@@ -1,14 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Button } from 'antd';
+import { Button, AutoComplete, message } from 'antd';
 import { useEventListener } from 'ahooks';
 import Peer from 'peerjs';
 import './App.css';
 
-let isGetFouse = false;
+let isPlayerOnFocus = false;
 
 const App = () => {
 
   console.log("组件执行");
+
+  // let id = "";
+
+  const idList = JSON.parse(localStorage.getItem("idList")) || [];
+
+  let option = [];
 
   const [data, setData] = useState({
     peer: {},
@@ -16,17 +22,22 @@ const App = () => {
     mediaChan: null
   })
 
-  const remote = useRef();
+  const [options, setOptions] = useState(idList.map((v) => {
+    return {
+      value: v,
+      label: v
+    }
+  }));
 
-  const input = useRef();
+  const player = useRef();
 
   const tools = useRef();
 
   const toolsShow = () => {
-    tools.current.style.height = "70px"
+    tools.current.style.height = "200px";
   }
 
-  const mediaCall = () => {
+  const mediaCall = (id) => {
     const createEmptyAudioTrack = () => {
       const ctx = new AudioContext();
       const oscillator = ctx.createOscillator();
@@ -53,12 +64,12 @@ const App = () => {
     new Promise((resolve) => {
       resolve(mediaStream)
     }).then(localStream => {
-      const mediaConn = data.peer.call(input.current.value, localStream);
-      const dataConn = data.peer.connect(input.current.value);
+      const mediaConn = data.peer.call(id, localStream);
+      const dataConn = data.peer.connect(id);
       mediaConn.on("close", () => console.log("媒体连接被挂断"))
       dataConn.on('close', () => console.log("数据连接被挂断"))
       mediaConn.on('stream', (remoteStream) => {
-        remote.current.srcObject = remoteStream;
+        player.current.srcObject = remoteStream;
       });
       setData({
         ...data,
@@ -67,7 +78,7 @@ const App = () => {
       })
     })
       .catch(err => {
-        console.log(err);
+        console.log("call", err);
       });
   }
 
@@ -75,13 +86,46 @@ const App = () => {
     console.log("挂断");
   }
 
+  const onSelect = (value) => {
+    console.log("onSelect");
+    if (data.peer._id && !idList.includes(value)) {
+      if (idList.length < 5) {
+        idList.unshift(value);
+        console.log("length < 5", idList);
+        localStorage.setItem("idList", JSON.stringify(idList));
+      } else {
+        idList.pop(value);
+        idList.unshift(value);
+        console.log("length >= 5", idList);
+        localStorage.setItem("idList", JSON.stringify(idList));
+      }
+    }
+    mediaCall(value)
+  }
+
+  const onSearch = (searchText) => {
+    if (!option.some((v) => {
+      return v.value == searchText
+    })) {
+      setOptions(
+        !searchText ? [] : [
+          {
+            value: searchText,
+            label: searchText
+          },
+          ...option
+        ],
+      );
+    }
+  };
+
   const clickEvent = (e) => {
     tools.current.style.height = 0;
     if (data.dataChan && data.mediaChan) {
       data.dataChan.send({
         type: "leftClick",
-        X: (e.nativeEvent.offsetX / remote.current.offsetWidth).toFixed(5),
-        Y: (e.nativeEvent.offsetY / remote.current.offsetHeight).toFixed(5)
+        X: (e.nativeEvent.offsetX / player.current.offsetWidth).toFixed(5),
+        Y: (e.nativeEvent.offsetY / player.current.offsetHeight).toFixed(5)
       })
     }
   }
@@ -90,8 +134,8 @@ const App = () => {
     if (data.dataChan && data.mediaChan) {
       data.dataChan.send({
         type: "rightClick",
-        X: (e.nativeEvent.offsetX / remote.current.offsetWidth).toFixed(5),
-        Y: (e.nativeEvent.offsetY / remote.current.offsetHeight).toFixed(5)
+        X: (e.nativeEvent.offsetX / player.current.offsetWidth).toFixed(5),
+        Y: (e.nativeEvent.offsetY / player.current.offsetHeight).toFixed(5)
       })
     }
     e.preventDefault()
@@ -122,8 +166,8 @@ const App = () => {
       if (data.dataChan && data.mediaChan && now - last > wait) {
         data.dataChan.send({
           type: "mouseMove",
-          X: (e.nativeEvent.offsetX / remote.current.offsetWidth).toFixed(5),
-          Y: (e.nativeEvent.offsetY / remote.current.offsetHeight).toFixed(5)
+          X: (e.nativeEvent.offsetX / player.current.offsetWidth).toFixed(5),
+          Y: (e.nativeEvent.offsetY / player.current.offsetHeight).toFixed(5)
         })
         last = now
       }
@@ -131,81 +175,6 @@ const App = () => {
   })()
 
   var patt = /^[a-z]{1}$/i;
-
-  // data.dataChan && data.mediaChan &&
-  // const keyUp = (e) => {
-  //   if (data.dataChan && data.mediaChan) {
-  //     switch (true) {
-  //       //匹配字母
-  //       case (patt.test(e.key)):
-  //         data.dataChan.send({
-  //           type: "key",
-  //           value: e.key.toUpperCase(),
-  //           ctrlKey: e.ctrlKey,
-  //           shiftKey: e.shiftKey
-  //         })
-  //         break;
-
-  //       //匹配数字
-  //       case e.code.substring(0, 5) === "Digit":
-  //         console.log("Num" + e.code.substr(e.code.length - 1, 1));
-  //         data.dataChan.send({
-  //           type: "key",
-  //           value: "Num" + e.code.substr(e.code.length - 1, 1),
-  //           ctrlKey: e.ctrlKey,
-  //           shiftKey: e.shiftKey
-  //         })
-  //         break;
-
-  //       case e.code.substring(0, 6) === "Numpad":
-  //         data.dataChan.send({
-  //           type: "key",
-  //           value: "NumPad" + e.code.substr(e.code.length - 1, 1),
-  //           ctrlKey: e.ctrlKey,
-  //           shiftKey: e.shiftKey
-  //         })
-  //         break;
-
-  //       //匹配方向键
-  //       case e.key.substring(0, 5) === "Arrow":
-  //         data.dataChan.send({
-  //           type: "key",
-  //           value: e.key.slice(5),
-  //           ctrlKey: e.ctrlKey,
-  //           shiftKey: e.shiftKey
-  //         })
-  //         break;
-
-  //       case (e.code === "Minus" || e.code === "Equal" || e.code === "Backslash" || e.code === "Semicolon" || e.code === "Quote" || e.code === "Comma" || e.code === "Period" || e.key === "Slash" || e.code === "Space"):
-  //         data.dataChan.send({
-  //           type: "key",
-  //           value: e.code,
-  //           ctrlKey: e.ctrlKey,
-  //           shiftKey: e.shiftKey
-  //         })
-  //         break;
-
-  //       case e.code === "Backquote":
-  //         data.dataChan.send({
-  //           type: "key",
-  //           value: "Grave",
-  //           ctrlKey: e.ctrlKey,
-  //           shiftKey: e.shiftKey
-  //         })
-  //         break;
-
-  //       default:
-  //         data.dataChan.send({
-  //           type: "key",
-  //           value: e.key,
-  //           ctrlKey: e.ctrlKey,
-  //           shiftKey: e.shiftKey
-  //         })
-  //         break;
-  //     }
-  //   }
-  //   e.preventDefault();
-  // }
 
   //阻止快捷键
   const keyDown = (e) => {
@@ -223,18 +192,28 @@ const App = () => {
   }
   document.onkeydown = keyDown;
 
+  const clip = () => {
+    console.log("chuagnshu");
+    data.dataChan.send({
+      type: "key",
+      value: "C",
+      ctrlKey: true,
+      shiftKey: false
+    })
+  }
+
   useEventListener('keydown', (e) => {
-    if (isGetFouse && data.dataChan && data.mediaChan) {
+    if (isPlayerOnFocus && data.dataChan && data.mediaChan) {
       switch (true) {
         //匹配字母
         case (patt.test(e.key)):
           if (!(e.key === "v" && e.ctrlKey)) {
             data.dataChan.send({
-            type: "key",
-            value: e.key.toUpperCase(),
-            ctrlKey: e.ctrlKey,
-            shiftKey: e.shiftKey
-          })
+              type: "key",
+              value: e.key.toUpperCase(),
+              ctrlKey: e.ctrlKey,
+              shiftKey: e.shiftKey
+            })
           } else {
             //剪切板同步
             //需获取权限
@@ -244,7 +223,7 @@ const App = () => {
                 value: e.key.toUpperCase(),
                 ctrlKey: e.ctrlKey,
                 shiftKey: e.shiftKey,
-                clipboardText:text
+                clipboardText: text
               })
             })
           }
@@ -310,16 +289,6 @@ const App = () => {
     }
   });
 
-  const clip = () => {
-    console.log("chuagnshu");
-    data.dataChan.send({
-      type: "key",
-      value: "C",
-      ctrlKey: true,
-      shiftKey: false
-    })
-  }
-
   useEffect(() => {
     const peer = new Peer('', {
       host: '124.222.249.224',
@@ -340,12 +309,12 @@ const App = () => {
     peer.on('connection', (conn) => {
       console.log("connectioned");
       conn.on('data', (msg) => {
-        console.log(msg);
+        console.log("on connection", msg);
       });
     });
 
     peer.on('call', (call) => {
-      console.log("called");
+      console.log("on calle");
       navigator.mediaDevices.getDisplayMedia({
         video: {
           cursor: "never"
@@ -355,15 +324,16 @@ const App = () => {
         .then(localStream => {
           call.answer(localStream);
           call.on('stream', (remoteStream) => {
-            remote.current.srcObject = remoteStream;
+            player.current.srcObject = remoteStream;
           });
         })
     });
 
-    peer.on('close', () => console.log("on close"))
+    peer.on('close', () => console.log("peer on close"))
 
     peer.on("error", err => {
-      console.log("on error", err.type);
+      message.error(err);
+      console.log("peer on error", err.type);
     })
   }, [])
 
@@ -373,13 +343,13 @@ const App = () => {
         height={"100%"}
         autoPlay
         playsInline
-        ref={remote}
+        ref={player}
         onClick={clickEvent}
         onContextMenu={rightClick}
         onWheel={wheelEvent}
         onMouseMove={mouseMove}
-        onMouseOver={() => isGetFouse = true}
-        onMouseOut={() => isGetFouse = false}
+        onMouseOver={() => isPlayerOnFocus = true}
+        onMouseOut={() => isPlayerOnFocus = false}
       />
 
       {
@@ -387,27 +357,31 @@ const App = () => {
           ?
           <>
             <div className='tools-switch' onClick={toolsShow}></div>
-
             <div
-              className={data.visiable ? 'tools tools-show' : 'tools tools-hide'}
+              className={'tools'}
               ref={tools}
             >
-              <div className='tools-input'>
-                <input
-                  type="text"
-                  placeholder="远程ID"
-                  ref={input}
-                />
-              </div>
-              <div className='tools-items'>
-                <Button ghost onClick={mediaCall}>连接</Button>
-
-                <Button ghost onClick={hangUp}>断开</Button>
+              <AutoComplete
+                style={{
+                  width: '170px',
+                }}
+                placeholder="ID"
+                // onChange={(v) => id = v}
+                onSearch={onSearch}
+                onSelect={onSelect}
+                options={options}
+                filterOption={(input, options) =>
+                  (options?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+              <div className='tools-buttons'>
+                <Button type="primary" onClick={mediaCall}>连接</Button>
+                <Button type="primary" onClick={hangUp}>断开</Button>
               </div>
             </div>
             <div className='sidebar'>
               <h3>ID:{data.dataChan?.peer}</h3>
-              <h3 onClick={clip}>clipboard</h3>
+              {/* <h3 onClick={clip}>clipboard</h3> */}
             </div>
           </>
           :
